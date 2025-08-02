@@ -13,14 +13,14 @@ import base64
 from datetime import datetime, date, time
 from streamlit_calendar import calendar
 
-# Optional voice support
+
 try:
     from streamlit_mic_recorder import speech_to_text
     VOICE = True
 except ImportError:
     VOICE = False
 
-# ——— Helpers to load & encode images ———
+
 def _get_base64(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
@@ -28,7 +28,7 @@ def _get_base64(path: str) -> str:
 login_b64  = _get_base64("login_bg.jpg")
 sticky_b64 = _get_base64("sticky_notes.jpg")
 
-# ——— Database setup ———
+
 DB = "tasks.db"
 def init_db():
     with sqlite3.connect(DB) as conn:
@@ -59,7 +59,7 @@ init_stats_db()
 get_stars = lambda: run_q("SELECT stars FROM stats WHERE id=1", fetch=True)[0][0]
 add_star  = lambda n=1: run_q("UPDATE stats SET stars = stars + ? WHERE id=1", (n,))
 
-# ——— Query helpers ———
+
 def run_q(q, args=(), fetch=False):
     with sqlite3.connect(DB) as conn:
         cur = conn.execute(q, args)
@@ -77,7 +77,7 @@ update_task  = lambda i,t,p,d,st,en,done: run_q(
 delete_task  = lambda i: run_q("DELETE FROM tasks WHERE id=?", (i,))
 clear_done   = lambda: run_q("DELETE FROM tasks WHERE done=1")
 
-# ——— LOGIN SCREEN ———
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -127,7 +127,6 @@ if not st.session_state.logged_in:
             st.warning("Please enter both email & password.")
     st.stop()
 
-# ─── Sidebar (after login) ───
 if "theme" not in st.session_state:
     st.session_state.theme = "Dark"
 if "sidebar_rows" not in st.session_state:
@@ -139,7 +138,7 @@ if "sidebar_filter" not in st.session_state:
 
 
 with st.sidebar:
-    # 1) top‐level menu
+   
     page = st.radio(
         "🔧 Menu",
         ["Home", "Search", "Reflection", "Settings"],
@@ -161,14 +160,14 @@ with st.sidebar:
     elif page == "Search":
         st.header("🔍 Search & Reorder Tasks")
 
-        # 2) Search box
+        
         search_txt = st.text_input(
             "Search Tasks",
             st.session_state.sidebar_search,
             key="sidebar_search"
         )
 
-        # 3) Fetch & filter
+        
         all_rows = fetch_tasks()
         order_map = {"High": 0, "Medium": 1, "Low": 2}
         all_rows.sort(key=lambda r: (order_map[r[2]], r[6]))
@@ -178,7 +177,7 @@ with st.sidebar:
         else:
             filtered = all_rows
 
-        # 4) Drag‐and‐drop, with a unique key per sidebar render
+        
         items = [f"{r[0]}: {r[1]}" for r in filtered]
         new_order = sort_items(
             items,
@@ -188,7 +187,7 @@ with st.sidebar:
             multi_containers=False,
         )
 
-        # 5) Rebuild rows from new order
+        
         sidebar_rows = []
         for lbl in new_order:
             tid, _ = lbl.split(":", 1)
@@ -197,10 +196,10 @@ with st.sidebar:
                     sidebar_rows.append(r)
                     break
 
-        # store for main display
+        
         st.session_state.sidebar_rows = sidebar_rows
 
-        # 6) Optional backlog view
+      
         if search_txt:
             st.markdown("📜 Backlog (last 30 days)")
             cutoff = (date.today() - pd.Timedelta(days=30)).isoformat()
@@ -285,7 +284,7 @@ with st.sidebar:
         )
 
 
-# ——— Apply Theme & Global Background ———
+
 THEMES = {
     "Dark":   {"bg":"#121212","fg":"#eee","inp":"#2c2c2c"},
     "Light":  {"bg":"#fafafa","fg":"#111","inp":"#fff"},
@@ -295,7 +294,7 @@ THEMES = {
 }
 cfg = THEMES[st.session_state.theme]
 
-# ——— Base CSS ———
+
 st.markdown(f"""
 <style>
   [data-testid="stAppViewContainer"] {{
@@ -344,7 +343,6 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ——— Dark-mode CSS ———
 if st.session_state.theme == "Dark":
     st.markdown(f"""
     <style>
@@ -475,7 +473,7 @@ st.markdown("""
 
 
 
-# ——— Sticky-notes panel behind task list ———
+
 st.markdown(f"""
 <style>
   .sticky-bg {{
@@ -500,7 +498,7 @@ st.markdown(f"""
 <div class="sticky-bg">
 """, unsafe_allow_html=True)
 
-# ——— Main: Add a New Task ———
+
 st.title("📝 Todo List")
 st.markdown("### ➕ Add a New Task")
 
@@ -531,7 +529,7 @@ if st.button("Add Task"):
     else:
         st.warning("⚠️ Task cannot be empty")
 
-# ─── Fetch, sort & reorder according to sidebar ───
+
 rows = st.session_state.get("sidebar_rows", fetch_tasks())
 order = {"High":0,"Medium":1,"Low":2}
 rows = sorted(rows, key=lambda r:(order[r[2]], r[6]))
@@ -540,7 +538,7 @@ if st.session_state.sidebar_filter == "Priority Only":
 elif st.session_state.sidebar_filter == "Non-Priority Only":
     rows = [r for r in rows if r[2]!="High"]
 
-# ——— Drag-and-drop reorder ———
+
 # Build a list of "id: task text" labels
 items = [f"{r[0]}: {r[1]}" for r in rows]
 
@@ -564,7 +562,7 @@ for label in new_order:
 
 rows = ordered_rows
 
-# ——— Display tasks with update block ———
+
 if not rows:
     st.info("No tasks to show.")
 else:
@@ -590,7 +588,6 @@ else:
             else:
                 update_task(tid, task, pr, dd, stt_val, ent_val, done_val)
 
-            # ——— ONLY ONE expander per task ———
             with st.expander("Edit Task"):
                 new_txt = st.text_input("Task", value=task, key=f"edit_txt_{tid}")
                 new_pr  = st.selectbox(
@@ -628,12 +625,11 @@ else:
                 delete_task(tid)
                 st.rerun()
 
-    # Clear completed sits outside the for-loop
     if st.button("🧹 Clear Completed"):
         clear_done()
         st.rerun()
 
-# ——— FullCalendar (00:00–23:00) ———
+
 st.markdown("---")
 st.subheader("📆 Calendar View")
 if st.button("🔁 Refresh Calendar"):
@@ -677,7 +673,7 @@ calendar_options = {
 }
 calendar(events=events, options=calendar_options)
 
-# ——— SUMMARY VISUALS ———
+
 st.markdown("---")
 st.subheader("📈 Summary Visuals")
 
@@ -729,5 +725,6 @@ with c3:
         labels={"priority":"Priority","# Tasks":"count"}
     )
     st.plotly_chart(bar_pr, use_container_width=True)
+
 
     
